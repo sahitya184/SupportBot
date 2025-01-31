@@ -15,7 +15,7 @@ app.post('/webhook', async (req, res) => {
     const orderNumber = req.body.queryResult.parameters['order-number'];
 
     try {
-      // Fetch order tracking data from a free tracking API (replace with real API)
+      // Fetch order tracking data from a free tracking API (Ship24)
       const orderDetails = await trackOrder(orderNumber);
 
       res.json({
@@ -45,7 +45,7 @@ app.post('/webhook', async (req, res) => {
     const productName = req.body.queryResult.parameters['product-name'];
 
     try {
-      // Fetch product information from a free API
+      // Fetch product information from a free API (FakeStoreAPI)
       const productInfo = await getProductInfo(productName);
 
       res.json({
@@ -86,7 +86,7 @@ const trackOrder = async (orderNumber) => {
       }
     });
 
-    if (response.data && response.data.data) {
+    if (response.data && response.data.data && response.data.data.length > 0) {
       const trackingData = response.data.data[0]; // Assuming the first entry contains details
       return {
         status: trackingData.status || 'Unknown',
@@ -97,7 +97,7 @@ const trackOrder = async (orderNumber) => {
       throw new Error('No tracking details found.');
     }
   } catch (error) {
-    throw new Error('Error fetching order details');
+    throw new Error(`Error fetching order details: ${error.message}`);
   }
 };
 
@@ -124,7 +124,7 @@ const getProductInfo = async (productName) => {
       throw new Error('Product not found.');
     }
   } catch (error) {
-    throw new Error('Error fetching product information');
+    throw new Error(`Error fetching product information: ${error.message}`);
   }
 };
 
