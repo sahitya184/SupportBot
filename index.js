@@ -13,26 +13,29 @@ app.post('/webhook', async (req, res) => {
 
   if (intentName === 'Order Tracking') {
     const orderNumber = req.body.queryResult.parameters['order-number'];
+
     try {
-      // Fetch order tracking data from the AfterShip API
+      // Fetch order tracking data from a free tracking API (replace with real API)
       const orderDetails = await trackOrder(orderNumber);
+
       res.json({
         fulfillmentMessages: [
           {
             text: {
               text: [
-                `Your order #${orderNumber} is currently ${orderDetails.status} and will arrive on ${orderDetails.delivery_date}.`
+                `Your order #${orderNumber} is currently **${orderDetails.status}**. The last update was on **${orderDetails.last_update}**. Estimated delivery: **${orderDetails.estimated_delivery}**.`
               ]
             }
           }
         ]
       });
     } catch (error) {
+      console.error('Error in Order Tracking:', error.message);
       res.json({
         fulfillmentMessages: [
           {
             text: {
-              text: ['Sorry, I could not retrieve your order details. Please try again later.']
+              text: ['Sorry, I could not retrieve your order details. Please check the order number and try again.']
             }
           }
         ]
@@ -40,21 +43,24 @@ app.post('/webhook', async (req, res) => {
     }
   } else if (intentName === 'Product Information') {
     const productName = req.body.queryResult.parameters['product-name'];
+
     try {
-      // Fetch product information from the Open Product Data API
+      // Fetch product information from a free API
       const productInfo = await getProductInfo(productName);
+
       res.json({
         fulfillmentMessages: [
           {
             text: {
               text: [
-                `The product you're asking about is a ${productName}. It has the following features: ${productInfo.features.join(', ')}.`
+                `Here’s what I found about **${productName}**: ${productInfo.description}. Key features: ${productInfo.features}. Price: **${productInfo.price} USD**.`
               ]
             }
           }
         ]
       });
     } catch (error) {
+      console.error('Error in Product Information:', error.message);
       res.json({
         fulfillmentMessages: [
           {
@@ -70,16 +76,26 @@ app.post('/webhook', async (req, res) => {
 
 // Function to fetch order tracking details
 const trackOrder = async (orderNumber) => {
-  const apiKey = 'asat_b3355513a65f49f3b90452475c89ba27'; // Replace with your Aftership API key
-  const apiUrl = `https://api.aftership.com/v4/trackings/${orderNumber}`;
+  const apiKey = 'apik_5gDzmUXlGEH2XHjf06NdeERATXR50L'; // Replace with your Ship24 API key
+  const apiUrl = `https://api.ship24.com/public/v1/trackers/${orderNumber}`;
 
   try {
     const response = await axios.get(apiUrl, {
       headers: {
-        'aftership-api-key': apiKey
+        'Authorization': `Bearer ${apiKey}`
       }
     });
-    return response.data.data.tracking;
+
+    if (response.data && response.data.data) {
+      const trackingData = response.data.data[0]; // Assuming the first entry contains details
+      return {
+        status: trackingData.status || 'Unknown',
+        last_update: trackingData.lastEventDate || 'Not available',
+        estimated_delivery: trackingData.estimatedDeliveryDate || 'Not available'
+      };
+    } else {
+      throw new Error('No tracking details found.');
+    }
   } catch (error) {
     throw new Error('Error fetching order details');
   }
@@ -87,11 +103,26 @@ const trackOrder = async (orderNumber) => {
 
 // Function to fetch product information
 const getProductInfo = async (productName) => {
-  const apiUrl = `https://api.openproductdata.com/products/${productName}`; // Example API endpoint
+  const apiUrl = `https://fakestoreapi.com/products`; // Free API for product information
 
   try {
     const response = await axios.get(apiUrl);
-    return response.data;
+    const products = response.data;
+
+    // Filter products based on product name
+    const product = products.find((p) =>
+      p.title.toLowerCase().includes(productName.toLowerCase())
+    );
+
+    if (product) {
+      return {
+        description: product.description,
+        features: product.category,
+        price: product.price
+      };
+    } else {
+      throw new Error('Product not found.');
+    }
   } catch (error) {
     throw new Error('Error fetching product information');
   }
